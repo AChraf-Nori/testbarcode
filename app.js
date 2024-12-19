@@ -41,68 +41,35 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         getEnvironmentCamera().then((cameraId) => {
+
+            const quaggaConf = {
+        inputStream: {
+            target: interactive,
+            type: "LiveStream",
+            constraints: {
+                width: { min: 640 },
+                height: { min: 480 },
+                facingMode: "environment",
+                aspectRatio: { min: 1, max: 2 }
+            }
+        },
+        decoder: {
+            readers: ['code_39_reader']
+        },
+    }
+
+    Quagga.init(quaggaConf, function (err) {
+        if (err) {
+            return console.log(err);
+        }
+        Quagga.start();
+    });
+
+    Quagga.onDetected(function (result) {
+        alert("Detected barcode: " + result.codeResult.code);
+    });
             // Optimizing Quagga initialization with lower resolution and faster frequency
-            Quagga.init(
-                {
-                    inputStream: {
-                        name: "Live",
-                        type: "LiveStream",
-                        target: interactive,
-                        constraints: {
-                            width: 320, // Reduced width for faster processing
-                            height: 240, // Reduced height for faster processing
-                            deviceId: cameraId || undefined,
-                            facingMode: { ideal: "environment" },
-                        },
-                    },
-                    decoder: { readers: ["code_39_reader"] },
-                    locate: true,
-                    locator: { patchSize: "small", halfSample: true }, // Reduced patch size for speed
-                    numOfWorkers: 2, // Using fewer workers to speed up processing
-                    frequency: 30, // Increased frequency to speed up detection
-                    debug: false, // Disable debugging for better performance
-                },
-                function (err) {
-                    if (err) {
-                        console.log(err);
-                        return;
-                    }
-                    console.log("QuaggaJS initialized successfully.");
-                    Quagga.start();
-                }
-            );
-
-            Quagga.onProcessed(function () {
-                const videoElement = document.querySelector("video");
-                if (videoElement && videoElement.readyState === 4) {
-                    guideScanner.style.display = "block";
-                }
-            });
-
-            Quagga.onDetected(function (data) {
-                        alert("Detected barcode: " + result.codeResult.code);
-
-                // scannedCode = data.codeResult.code;
-                // guideScanner.style.display = "none";
-                // resultElement.style.display = "block";
-                // document.getElementById("result").innerText = `Code: ${scannedCode}`;
-
-                // beepSound
-                //     .play()
-                //     .then(() => {
-                //         Quagga.stop();
-                //         stopScan();
-                //         removeVideoElement();
-                //         checkPackageStatus(scannedCode);
-                //     })
-                //     .catch((error) => {
-                //         console.error("Error playing beep sound:", error);
-                //         Quagga.stop();
-                //         stopScan();
-                //         removeVideoElement();
-                //         checkPackageStatus(scannedCode);
-                //     });
-            });
+            
         });
     }
 
