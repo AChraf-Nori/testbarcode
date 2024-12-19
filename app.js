@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let videoStream = null;
     let scanner = null;
 
-            alert("Update N0. 2");
+            alert("Update N0. 3");
 
 
     const bsModal = new bootstrap.Modal(scannerModal, {
@@ -67,21 +67,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     Quagga.onDetected(function (result) {
         alert("Detected barcode: " + result.codeResult.code);
-        beepSound
-                    .play()
-                    .then(() => {
-                        Quagga.stop();
-                        stopScan();
-                        removeVideoElement();
-                        // checkPackageStatus(scannedCode);
-                    })
-                    .catch((error) => {
-                        alert("Error playing beep sound:", error);
-                        Quagga.stop();
-                        stopScan();
-                        removeVideoElement();
-                        // checkPackageStatus(scannedCode);
-                    });
+        Quagga.stop();
+        stopScan();
+        removeVideoElement();
     });
             // Optimizing Quagga initialization with lower resolution and faster frequency
             
