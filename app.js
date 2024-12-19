@@ -77,26 +77,28 @@ document.addEventListener("DOMContentLoaded", function () {
             });
 
             Quagga.onDetected(function (data) {
-                scannedCode = data.codeResult.code;
-                guideScanner.style.display = "none";
-                resultElement.style.display = "block";
-                document.getElementById("result").innerText = `Code: ${scannedCode}`;
+                        alert("Detected barcode: " + result.codeResult.code);
 
-                beepSound
-                    .play()
-                    .then(() => {
-                        Quagga.stop();
-                        stopScan();
-                        removeVideoElement();
-                        checkPackageStatus(scannedCode);
-                    })
-                    .catch((error) => {
-                        console.error("Error playing beep sound:", error);
-                        Quagga.stop();
-                        stopScan();
-                        removeVideoElement();
-                        checkPackageStatus(scannedCode);
-                    });
+                // scannedCode = data.codeResult.code;
+                // guideScanner.style.display = "none";
+                // resultElement.style.display = "block";
+                // document.getElementById("result").innerText = `Code: ${scannedCode}`;
+
+                // beepSound
+                //     .play()
+                //     .then(() => {
+                //         Quagga.stop();
+                //         stopScan();
+                //         removeVideoElement();
+                //         checkPackageStatus(scannedCode);
+                //     })
+                //     .catch((error) => {
+                //         console.error("Error playing beep sound:", error);
+                //         Quagga.stop();
+                //         stopScan();
+                //         removeVideoElement();
+                //         checkPackageStatus(scannedCode);
+                //     });
             });
         });
     }
