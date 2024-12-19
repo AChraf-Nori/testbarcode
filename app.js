@@ -12,6 +12,9 @@ document.addEventListener("DOMContentLoaded", function () {
     let videoStream = null;
     let scanner = null;
 
+            alert("Update N0. 1");
+
+
     const bsModal = new bootstrap.Modal(scannerModal, {
         keyboard: false,
         backdrop: "",
