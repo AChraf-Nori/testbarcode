@@ -1,268 +1,89 @@
-document.addEventListener("DOMContentLoaded", function () {
-    const scannerModal = document.getElementById("qrModal");
-    const scanButton = document.getElementById("scan_button");
-    const pickupButton = document.getElementById("pickup_button");
-    const guideScanner = document.getElementById("guide-scanner");
-    const interactive = document.getElementById("interactive");
-    const closeButton = document.querySelector(".modal-header .btn-close");
-    const resultElement = document.querySelector(".pickup-result");
+// Set up the canvas for image manipulation
+const canvas = document.createElement('canvas');
+const ctx = canvas.getContext('2d');
 
-    let scannedCode = null;
-    let userCoordinates = null;
-    let videoStream = null;
-    let scanner = null;
+// Video stream element
+const video = document.createElement('video');
 
-            alert("Update N0. 3");
-
-
-    const bsModal = new bootstrap.Modal(scannerModal, {
-        keyboard: false,
-        backdrop: "",
-      });
-
-    const beepSound = new Audio("beep.mp3");
-
-    // Start the scan with optimizations for performance
-    function startScan() {
-        resultElement.style.display = "none";
-        async function getEnvironmentCamera() {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const videoDevices = devices.filter(
-                (device) => device.kind === "videoinput"
-            );
-
-            const environmentCamera = videoDevices.find(
-                (device) =>
-                    device.label.toLowerCase().includes("back") ||
-                    device.label.toLowerCase().includes("rear")
-            );
-
-            return environmentCamera ? environmentCamera.deviceId : undefined;
-        }
-
-        getEnvironmentCamera().then((cameraId) => {
-
-            const quaggaConf = {
+// Function to initialize the video stream and start the barcode scanner
+function initializeScanner() {
+    // Set up Quagga to use the live camera stream
+    Quagga.init({
         inputStream: {
-            target: interactive,
-            type: "LiveStream",
+            name: 'Live',
+            type: 'LiveStream',
+            target: document.querySelector('#scanner-container'), // target the container where the video stream will appear
             constraints: {
-                width: { min: 640 },
-                height: { min: 480 },
-                facingMode: "environment",
-                aspectRatio: { min: 1, max: 2 }
-            }
+                facingMode: 'environment', // Use the rear camera on mobile devices
+            },
+            area: {
+                top: '10%',    // top offset to focus on the center
+                right: '10%',
+                left: '10%',
+                bottom: '10%'   // bottom offset for a better capture area
+            },
         },
         decoder: {
-            readers: ['code_39_reader']
-        },
-    }
-
-    Quagga.init(quaggaConf, function (err) {
-        if (err) {
-            return console.log(err);
+            readers: ['code_128_reader', 'ean_reader', 'upc_reader', 'code_39_reader'] // 1D barcodes
         }
+    }, function(err) {
+        if (err) {
+            console.error('Error initializing Quagga:', err);
+            return;
+        }
+        console.log('Quagga initialized successfully');
+        // Start the scanning process
         Quagga.start();
     });
 
-    Quagga.onDetected(function (result) {
-        alert("Detected barcode: " + result.codeResult.code);
-        Quagga.stop();
-        stopScan();
-        removeVideoElement();
-    });
-            // Optimizing Quagga initialization with lower resolution and faster frequency
-            
-        });
-    }
-
-    // Stop the scanner
-    function stopScan() {
-        if (videoStream) {
-            const tracks = videoStream.getTracks();
-            tracks.forEach(function (track) {
-                track.stop();
-            });
-            videoStream = null;
-        }
-    }
-
-    // Remove the video element from the DOM
-    function removeVideoElement() {
-        const video = document.getElementById("video");
-        if (video) {
-            video.remove();
-        }
-    }
-
-    // Remove canvas elements (used for Quagga's visualization)
-    function removeCanvasElements() {
-        const canvases = document.querySelectorAll(".drawingBuffer");
-        canvases.forEach((canvas) => {
-            canvas.parentNode.removeChild(canvas);
-        });
-    }
-
-    // Function to get address from coordinates
-    function getAddressFromCoordinates(lat, lon, callback) {
-        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`;
-        fetch(url)
-            .then((response) => response.json())
-            .then((data) => {
-                if (data && data.display_name) {
-                    callback(data.display_name);
-                } else {
-                    callback(null);
-                }
-            })
-            .catch((error) => {
-                console.error("Error fetching address:", error);
-                callback(null);
-            });
-    }
-
-    // Check package status
-    function checkPackageStatus(code) {
-        $.ajax({
-            url: "liste.php", // Change the path to your PHP file if necessary
-            type: "POST",
-            data: {
-                code: code,
-                check_status: 1,
-            },
-            dataType: "json",
-            success: function (response) {
-                if (response && response.existe) {
-                    pickupButton.classList.add("d-none");
-                    removeDeliveredButtons();
-                    const deliveredButton = document.createElement("button");
-                    deliveredButton.innerText = "Livré";
-                    deliveredButton.classList.add("btn", "btn-primary");
-                    deliveredButton.addEventListener("click", function () {
-                        saveStatusLivree();
-                    });
-                    scannerModal
-                        .querySelector(".modal-footer")
-                        .appendChild(deliveredButton);
-                } else {
-                    pickupButton.classList.remove("d-none");
-                }
-            },
-            error: function () {
-                alert("Erreur lors de la vérification du statut du colis.");
-            },
-        });
-    }
-
-    // Remove delivered buttons
-    function removeDeliveredButtons() {
-        const deliveredButtons = scannerModal.querySelectorAll(
-            ".modal-footer button.btn-primary"
-        );
-        deliveredButtons.forEach((button) => {
-            button.remove();
-        });
-    }
-
-    // Save scan result (pickup)
-    function saveScanResult() {
-        if (!scannedCode || !userCoordinates) {
-            alert("Scan incomplet ou coordonnées manquantes");
-            return;
-        }
-
-        if (confirm("Êtes-vous sûr de vouloir marquer le colis comme ramassé ?")) {
-            getAddressFromCoordinates(
-                userCoordinates.lat,
-                userCoordinates.lon,
-                (address) => {
-                    if (!address) {
-                        alert("Impossible de récupérer l'adresse");
-                        return;
-                    }
-
-                    const data = {
-                        code: scannedCode,
-                        address: address,
-                        marquer_ramasser: 1,
-                    };
-
-                    $.ajax({
-                        url: "liste.php",
-                        type: "POST",
-                        data: data,
-                        dataType: "json",
-                        success: function (response) {
-                            if (response) {
-                                alert(response.message);
-                                location.reload();
-                            } else {
-                                alert("Réponse invalide du serveur.");
-                            }
-                        },
-                        error: function () {
-                            alert("Erreur lors de la sauvegarde.");
-                        },
-                    });
-                }
-            );
-        } else {
-            console.log("L'opération a été annulée.");
-        }
-    }
-
-    // Handle modal show event
-    scannerModal.addEventListener("shown.bs.modal", function () {
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                userCoordinates = {
-                    lat: position.coords.latitude,
-                    lon: position.coords.longitude,
-                };
-                if (!document.getElementById("video")) {
-                    const videoElement = document.createElement("video");
-                    videoElement.setAttribute("id", "video");
-                    videoElement.setAttribute("playsinline", "");
-                    videoElement.setAttribute("muted", "");
-                    videoElement.style.width = "100%";
-                    interactive.appendChild(videoElement);
-
-                    navigator.mediaDevices
-                        .getUserMedia({ video: { facingMode: "environment" } })
-                        .then(function (stream) {
-                            videoStream = stream;
-                            videoElement.srcObject = stream;
-                            videoElement.play();
-                            startScan();
-                        })
-                        .catch(function (err) {
-                            console.error("Error accessing camera:", err);
-                            alert("Impossible d'accéder à la caméra");
-                        });
-                } else {
-                    startScan();
-                }
-            },
-            (error) => {
-                console.error("Geolocation error:", error);
-                alert("Impossible d'obtenir la position de l'utilisateur");
-            }
-        );
+    // When a barcode is detected, handle it
+    Quagga.onDetected(function(result) {
+        const barcode = result.codeResult.code; // the detected barcode value
+        document.getElementById('barcode-result').innerText = 'Barcode: ' + barcode;
+        console.log('Barcode detected:', barcode);
     });
 
-    // Handle modal hide event
-    scannerModal.addEventListener("hidden.bs.modal", function () {
-        stopScan();
-        removeVideoElement(); // Ensure video element is removed when modal is hidden
-        removeCanvasElements(); // Ensure canvas elements are removed
-        location.reload();
+    // Set up video streaming
+    video.width = 640; // You can set the width and height according to your needs
+    video.height = 480;
+
+    // Start the video stream
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(function(stream) {
+            video.srcObject = stream;
+            video.play();
+            requestAnimationFrame(processFrame);
+        })
+        .catch(function(error) {
+            console.error('Error accessing camera:', error);
+        });
+}
+
+// Function to process each video frame using Canvas
+function processFrame() {
+    // Draw the current video frame onto the canvas
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // You can optionally process the frame here (resize, grayscale, etc.) to improve detection speed and accuracy
+    // Example: Resize the image for faster processing
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    // Send the image data to Quagga for barcode detection
+    Quagga.decodeSingle({
+        src: imageData,
+        decoder: {
+            readers: ['code_128_reader', 'ean_reader', 'upc_reader', 'code_39_reader']
+        }
+    }, function(result) {
+        if (result && result.codeResult) {
+            console.log('Barcode detected:', result.codeResult.code);
+            document.getElementById('barcode-result').innerText = 'Barcode: ' + result.codeResult.code;
+        }
     });
 
-    // Bind event listeners
-    scanButton.addEventListener("click", () => bsModal.show());
-    // pickupButton.addEventListener("click", saveScanResult);
-    closeButton.addEventListener("click", function () {
-        stopScan();
-        location.reload();
-    });
-});
+    // Request the next animation frame
+    requestAnimationFrame(processFrame);
+}
+
+// Initialize the scanner
+initializeScanner();
